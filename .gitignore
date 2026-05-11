@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Local environment files
+.env
+.env.*
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.vscode/
