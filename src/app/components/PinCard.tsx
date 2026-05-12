@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Share2, MoreHorizontal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Share2, MoreHorizontal, Heart, Download } from 'lucide-react';
 import { Pin, useAppContext } from '../../AppContext';
+import { usePinActions } from '../hooks/usePinActions';
+import { downloadImage } from '../utils/download';
 
 interface PinCardProps {
   pin: Pin;
@@ -8,7 +10,17 @@ interface PinCardProps {
 
 export function PinCard({ pin }: PinCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const { setSelectedPin } = useAppContext();
+  const { setSelectedPin, currentUser } = useAppContext();
+  const { state, toggleSave, fetchState } = usePinActions(pin.pin_id, currentUser?.user_id);
+
+  useEffect(() => {
+    fetchState();
+  }, [fetchState]);
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    downloadImage(pin.image_url, `${pin.title || 'pin'}.jpg`);
+  };
 
   return (
     <div
@@ -25,8 +37,12 @@ export function PinCard({ pin }: PinCardProps) {
       {isHovered && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-between p-4">
           <div className="flex justify-end gap-2">
-            <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-semibold transition-all">
-              Save
+            <button 
+              onClick={handleDownload}
+              className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-semibold transition-all flex items-center gap-2`}
+            >
+              <Download className="w-4 h-4" />
+              Download
             </button>
           </div>
           <div className="flex items-end justify-between">

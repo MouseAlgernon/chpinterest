@@ -17,16 +17,29 @@ export default function GalleryTab() {
   const [columns, setColumns] = useState(3);
 
 useEffect(() => {
+  const updateColumns = () => {
+    if (containerRef.current) {
+      setColumns(getColumns(containerRef.current.offsetWidth));
+    }
+  };
+
   const observer = new ResizeObserver((entries) => {
     for (const entry of entries) {
       setColumns(getColumns(entry.contentRect.width));
     }
   });
+  
   if (containerRef.current) {
     observer.observe(containerRef.current);
-    setColumns(getColumns(containerRef.current.offsetWidth)); // ← добавь
+    updateColumns();
   }
-  return () => observer.disconnect();
+  
+  window.addEventListener('resize', updateColumns);
+  
+  return () => {
+    observer.disconnect();
+    window.removeEventListener('resize', updateColumns);
+  };
 }, []);
 
   if (loading) {

@@ -25,7 +25,9 @@ export interface Pin {
 }
 
 interface AppContextType {
- id: BigInteger;
+  currentUser: { user_id: number; username: string; profile_picture?: string | null };
+  onLogout: () => void;
+  id: number;
   currentTheme: Theme;
   setTheme: (theme: Theme) => void;
   openTab: (tabId: string) => void;

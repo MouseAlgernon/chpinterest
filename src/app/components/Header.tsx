@@ -1,5 +1,5 @@
 import logo from '../assets/logo.png';
-import { Search, Bell, MessageCircle, User, Plus } from "lucide-react";
+import { Search, Bell, MessageCircle, LogOut, Plus } from "lucide-react";
 import { useAppContext } from "../../AppContext";
 
 const Header = () => {
@@ -7,6 +7,7 @@ const Header = () => {
     searchQuery, setSearchQuery,
     selectedCategory, setSelectedCategory,
     categories, setTabMenuOpen,
+    onLogout,
   } = useAppContext();
 
   return (
@@ -46,8 +47,12 @@ const Header = () => {
           <button className="p-2 hover:bg-gray-100 rounded-full transition-all">
             <MessageCircle className="w-6 h-6 text-gray-700" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-all">
-            <User className="w-6 h-6 text-gray-700" />
+          <button 
+            onClick={onLogout}
+            title="Logout"
+            className="p-2 hover:bg-gray-100 rounded-full transition-all"
+          >
+            <LogOut className="w-6 h-6 text-gray-700" />
           </button>
         </div>
       </div>

@@ -30,11 +30,16 @@ export default defineConfig({
   
   assetsInclude: ['**/*.svg', '**/*.csv'],
   server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost/chpinterest',
-        changeOrigin: true,
-      }
+  proxy: {
+    '/api': {
+      target: 'http://localhost/chpinterest',
+      changeOrigin: true,
+      configure: (proxy) => {
+        proxy.on('proxyReq', (proxyReq) => {
+          proxyReq.setHeader('Origin', 'http://localhost/chpinterest');
+        });
+      },
     }
   }
+}
 });
