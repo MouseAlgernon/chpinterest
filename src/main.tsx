@@ -1,12 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './app/App';
-import LoginPage from './app/components/LoginPage';
-import { useAuth } from './app/hooks/useAuth';
-import './styles/index.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./app/App";
+import LoginPage from "./app/components/LoginPage";
+import { useAuth } from "./app/hooks/useAuth";
+import "./styles/index.css";
 
 function Root() {
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, login, register, logout } = useAuth();
 
   if (loading) {
     return (
@@ -17,14 +17,14 @@ function Root() {
   }
 
   if (!user) {
-    return <LoginPage onLogin={login} />;
+    return <LoginPage onLogin={login} onRegister={register} />;
   }
 
   return <App user={user} onLogout={logout} />;
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Root />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

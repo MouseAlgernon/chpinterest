@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:5173');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../config.php';
+setCors();
 
 session_start();
 session_destroy();

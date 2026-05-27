@@ -2,10 +2,7 @@
 -- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Хост: 127.0.0.1:3306
--- Время создания: Май 12 2026 г., 03:00
--- Версия сервера: 8.4.7
--- Версия PHP: 8.3.28
+
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -17,14 +14,7 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
---
--- База данных: `!saygex`
---
 
--- --------------------------------------------------------
-
---
--- Структура таблицы `airbnb`
 --
 
 DROP TABLE IF EXISTS `airbnb`;
@@ -39,9 +29,6 @@ CREATE TABLE IF NOT EXISTS `airbnb` (
   KEY `id_pays` (`id_pays`)
 ) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Дамп данных таблицы `airbnb`
---
 
 INSERT INTO `airbnb` (`id_logement`, `Description`, `Nbr_chambre`, `ville`, `id_pays`, `Prix_Min`) VALUES
 (1, 'Appartement cosy centre-ville', 2, 'Paris', 1, 75.00),
@@ -50,10 +37,6 @@ INSERT INTO `airbnb` (`id_logement`, `Description`, `Nbr_chambre`, `ville`, `id_
 (4, '', 0, '', 0, 0.00);
 
 -- --------------------------------------------------------
-
---
--- Структура таблицы `bans`
---
 
 DROP TABLE IF EXISTS `bans`;
 CREATE TABLE IF NOT EXISTS `bans` (
@@ -67,9 +50,7 @@ CREATE TABLE IF NOT EXISTS `bans` (
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `boardcategories`
---
+
 
 DROP TABLE IF EXISTS `boardcategories`;
 CREATE TABLE IF NOT EXISTS `boardcategories` (
@@ -83,9 +64,7 @@ CREATE TABLE IF NOT EXISTS `boardcategories` (
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `boards`
---
+
 
 DROP TABLE IF EXISTS `boards`;
 CREATE TABLE IF NOT EXISTS `boards` (
@@ -100,9 +79,6 @@ CREATE TABLE IF NOT EXISTS `boards` (
   KEY `user_id` (`user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `boards`
---
 
 INSERT INTO `boards` (`board_id`, `user_id`, `name`, `description`, `visibility`, `created_at`, `updated_at`) VALUES
 (1, 1, 'гоол', 'гол', NULL, '2026-04-11 11:50:42', NULL),
@@ -112,9 +88,6 @@ INSERT INTO `boards` (`board_id`, `user_id`, `name`, `description`, `visibility`
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `comments`
---
 
 DROP TABLE IF EXISTS `comments`;
 CREATE TABLE IF NOT EXISTS `comments` (
@@ -129,9 +102,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
   KEY `user_id` (`user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `comments`
---
+
 
 INSERT INTO `comments` (`comment_id`, `pin_id`, `user_id`, `content`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 'вот так вот', '2026-04-11 12:37:30', NULL),
@@ -139,9 +110,7 @@ INSERT INTO `comments` (`comment_id`, `pin_id`, `user_id`, `content`, `created_a
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `comment_likes`
---
+
 
 DROP TABLE IF EXISTS `comment_likes`;
 CREATE TABLE IF NOT EXISTS `comment_likes` (
@@ -157,9 +126,7 @@ CREATE TABLE IF NOT EXISTS `comment_likes` (
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `externalaccounts`
---
+
 
 DROP TABLE IF EXISTS `externalaccounts`;
 CREATE TABLE IF NOT EXISTS `externalaccounts` (
@@ -174,9 +141,7 @@ CREATE TABLE IF NOT EXISTS `externalaccounts` (
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `featureflags`
---
+
 
 DROP TABLE IF EXISTS `featureflags`;
 CREATE TABLE IF NOT EXISTS `featureflags` (
@@ -188,9 +153,7 @@ CREATE TABLE IF NOT EXISTS `featureflags` (
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `followers`
---
+
 
 DROP TABLE IF EXISTS `followers`;
 CREATE TABLE IF NOT EXISTS `followers` (
@@ -203,9 +166,7 @@ CREATE TABLE IF NOT EXISTS `followers` (
   KEY `follower_user_id` (`follower_user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `followers`
---
+
 
 INSERT INTO `followers` (`follower_id`, `user_id`, `follower_user_id`, `created_at`) VALUES
 (1, 1, 3, NULL),
@@ -216,9 +177,7 @@ INSERT INTO `followers` (`follower_id`, `user_id`, `follower_user_id`, `created_
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `friends`
---
+
 
 DROP TABLE IF EXISTS `friends`;
 CREATE TABLE IF NOT EXISTS `friends` (
@@ -232,9 +191,7 @@ CREATE TABLE IF NOT EXISTS `friends` (
   KEY `friend_user_id` (`friend_user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `friends`
---
+
 
 INSERT INTO `friends` (`friend_id`, `user_id`, `friend_user_id`, `status`, `created_at`) VALUES
 (1, 3, 2, 'pending', '2026-04-11 19:57:01'),
@@ -246,9 +203,7 @@ INSERT INTO `friends` (`friend_id`, `user_id`, `friend_user_id`, `status`, `crea
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `images`
---
+
 
 DROP TABLE IF EXISTS `images`;
 CREATE TABLE IF NOT EXISTS `images` (
@@ -262,9 +217,7 @@ CREATE TABLE IF NOT EXISTS `images` (
   KEY `pin_id` (`pin_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `images`
---
+
 
 INSERT INTO `images` (`image_id`, `pin_id`, `image_path`, `image_type`, `sort_order`, `created_at`) VALUES
 (1, 1, 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0A0PlkPcbQOZVQRekNmaquosxbRX8vZGA-g&s', 'url', 0, '2026-04-11 13:35:39'),
@@ -307,8 +260,7 @@ INSERT INTO `images` (`image_id`, `pin_id`, `image_path`, `image_type`, `sort_or
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `likes`
+
 --
 
 DROP TABLE IF EXISTS `likes`;
@@ -322,8 +274,7 @@ CREATE TABLE IF NOT EXISTS `likes` (
   KEY `user_id` (`user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Дамп данных таблицы `likes`
+
 --
 
 INSERT INTO `likes` (`like_id`, `pin_id`, `user_id`, `created_at`) VALUES
@@ -337,7 +288,6 @@ INSERT INTO `likes` (`like_id`, `pin_id`, `user_id`, `created_at`) VALUES
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `messages`
 --
 
 DROP TABLE IF EXISTS `messages`;
@@ -353,7 +303,6 @@ CREATE TABLE IF NOT EXISTS `messages` (
 ) ENGINE=MyISAM AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Дамп данных таблицы `messages`
 --
 
 INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `content`, `created_at`) VALUES
@@ -372,7 +321,6 @@ INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `content`, `cr
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `notifications`
 --
 
 DROP TABLE IF EXISTS `notifications`;
@@ -389,7 +337,6 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `pays`
 --
 
 DROP TABLE IF EXISTS `pays`;
@@ -400,7 +347,6 @@ CREATE TABLE IF NOT EXISTS `pays` (
 ) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Дамп данных таблицы `pays`
 --
 
 INSERT INTO `pays` (`id_pays`, `nom_pays`) VALUES
@@ -411,7 +357,6 @@ INSERT INTO `pays` (`id_pays`, `nom_pays`) VALUES
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `pinratings`
 --
 
 DROP TABLE IF EXISTS `pinratings`;
@@ -429,7 +374,6 @@ CREATE TABLE IF NOT EXISTS `pinratings` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `pins`
 --
 
 DROP TABLE IF EXISTS `pins`;
@@ -450,7 +394,6 @@ CREATE TABLE IF NOT EXISTS `pins` (
 ) ENGINE=MyISAM AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Дамп данных таблицы `pins`
 --
 
 INSERT INTO `pins` (`pin_id`, `board_id`, `user_id`, `title`, `description`, `image_url`, `link_url`, `created_at`, `updated_at`, `category`) VALUES

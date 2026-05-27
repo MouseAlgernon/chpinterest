@@ -1,21 +1,16 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-
-$host = '127.0.0.1';
-$db   = '!saygex';
-$user = 'root';
-$pass = '';
+require_once __DIR__ . '/config.php';
+setCors();
 
 try {
-  $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo = getDB();
 
-  // получаем пины с юзером и количеством лайков
   $stmt = $pdo->query("
-    SELECT 
+    SELECT
       p.*,
       u.username,
+      u.profile_picture AS author_picture,
       COUNT(DISTINCT l.like_id) as likes_count
     FROM pins p
     LEFT JOIN users u ON p.user_id = u.user_id
@@ -25,16 +20,15 @@ try {
   ");
   $pins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-  // для каждого пина подгружаем images
   $imgStmt = $pdo->prepare("
-    SELECT * FROM images 
-    WHERE pin_id = ? 
+    SELECT * FROM images
+    WHERE pin_id = ?
     ORDER BY sort_order ASC
   ");
 
   foreach ($pins as &$pin) {
     $imgStmt->execute([$pin['pin_id']]);
-    $pin['images'] = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
+    $pin['images']      = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
     $pin['likes_count'] = (int)$pin['likes_count'];
   }
 

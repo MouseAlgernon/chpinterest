@@ -1,36 +1,51 @@
-import React, { useState, useRef, useEffect } from "react";
-import DockLayout from 'rc-dock';
-import 'rc-dock/dist/rc-dock.css';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import DockLayout from "rc-dock";
+import "rc-dock/dist/rc-dock.css";
 import { AppContext } from "../AppContext";
 import Header from "./components/Header";
 import GalleryTab from "./components/GalleryTab";
 import PinDetailTab from "./components/PinDetailTab";
 import UploadModal from "./components/UploadModal";
-import { usePins } from "./hooks/usePins";
-import { themes, Theme } from './themes';
+import FriendsTab from "./components/FriendsTab";
+import ChatsTab from "./components/ChatsTab";
+import ChatTab from "./components/ChatTab";
+import UserProfileTab from "./components/UserProfileTab";
 import SettingsTab from "./components/SettingsTab";
+import { usePins } from "./hooks/usePins";
+import { themes, Theme } from "./themes";
 import { Eye, EyeOff } from "lucide-react";
 
+// ── Static tabs shown in the Manage Tabs menu ──────────────────────────────
 const availableTabs = [
-  { id: 'main',      title: 'Gallery',   label: 'Gallery'  },
-  { id: 'pinDetail', title: 'View Pin',  label: 'View Pin' },
-  { id: 'profile',   title: 'Profile',   label: 'Profile'  },
-  { id: 'settings',  title: 'Settings',   label: 'Settings' },
+  { id: "main", title: "Gallery", label: "Gallery" },
+  { id: "pinDetail", title: "View Pin", label: "View Pin" },
+  { id: "chats", title: "Messages", label: "Messages" },
+  { id: "friends", title: "Friends", label: "Friends" },
+  { id: "profile", title: "My Profile", label: "My Profile" },
+  { id: "settings", title: "Settings", label: "Settings" },
 ];
+
+// ── Props for tabs not in availableTabs (restored after reload) ────────────
+const permanentTabProps: Record<string, { title: string; closable: boolean }> =
+  {
+    header: { title: "navbar", closable: false },
+  };
+
 interface AppProps {
-  user: { user_id: number; username: string };
+  user: { user_id: number; username: string; profile_picture?: string | null };
   onLogout: () => void;
 }
 
 export default function App({ user, onLogout }: AppProps) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
   const setTheme = (theme: Theme) => {
-  setCurrentTheme(theme);
-  const root = document.documentElement;
-  Object.entries(theme.vars).forEach(([key, value]) => {
-    root.style.setProperty(key, value);
-  });
-};
+    setCurrentTheme(theme);
+    const root = document.documentElement;
+    Object.entries(theme.vars).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPin, setSelectedPin] = useState(null);
@@ -38,11 +53,21 @@ export default function App({ user, onLogout }: AppProps) {
   const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [defaultLayout, setDefaultLayout] = useState<any>(null);
   const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(new Set());
+  // Titles for dynamic tabs (chat:N, userprofile:N) — persisted so they survive reload
+  const [tabTitles, setTabTitles] = useState<Record<string, string>>({});
+
   const dockRef = useRef<DockLayout>(null);
 
   const { pins, loading, error, refetch } = usePins();
 
-  const categories = ["All", "Nature", "Food", "Architecture", "Fashion", "Other"];
+  const categories = [
+    "All",
+    "Nature",
+    "Food",
+    "Architecture",
+    "Fashion",
+    "Other",
+  ];
 
   const filteredPins = pins.filter((pin) => {
     const matchesSearch =
@@ -53,233 +78,322 @@ export default function App({ user, onLogout }: AppProps) {
     return matchesSearch && matchesCategory;
   });
 
-  const tabContent: Record<string, React.ReactElement> = React.useMemo(() => ({
-    header:    <Header />,
-    main:      <GalleryTab />,
-    pinDetail: <PinDetailTab />,
-    profile:   <div className="p-6 text-gray-500">Profile — coming soon</div>,
-    settings: <div className="p-6 text-gray-500">Settings — coming soon</div>,
-  }), []);
-
-  // Helper to clean saved layout and inject fresh components
-  const cleanLayoutWithContent = (savedLayout: any) => {
-    if (!savedLayout?.dockbox) return null;
-    
-    const processBox = (box: any): any => {
-      if (box.tabs) {
-        return {
-          ...box,
-          tabs: box.tabs.map((tab: any) => {
-            const tabDef = availableTabs.find(t => t.id === tab.id);
-            return {
-              ...tab,
-              title: tabDef?.title ?? tab.title,
-              content: tabContent[tab.id] || <div>Unknown tab</div>
-            };
-          })
-        };
+  // ── Build a React element for any tab ID, including dynamic ones ───────────
+  const makeTabContent = useCallback(
+    (tabId: string): React.ReactElement => {
+      if (tabId === "header") return <Header />;
+      if (tabId === "main") return <GalleryTab />;
+      if (tabId === "pinDetail") return <PinDetailTab />;
+      if (tabId === "chats") return <ChatsTab />;
+      if (tabId === "friends") return <FriendsTab />;
+      if (tabId === "settings") return <SettingsTab />;
+      if (tabId === "profile")
+        return <UserProfileTab userId={user.user_id} isOwnProfile />;
+      if (tabId.startsWith("chat:")) {
+        const toUserId = parseInt(tabId.split(":")[1], 10);
+        return <ChatTab toUserId={toUserId} />;
       }
-      if (box.children) {
-        return {
-          ...box,
-          children: box.children.map(processBox)
-        };
+      if (tabId.startsWith("userprofile:")) {
+        const uid = parseInt(tabId.split(":")[1], 10);
+        return <UserProfileTab userId={uid} />;
       }
-      return box;
-    };
+      return (
+        <div className="p-4 text-gray-400 text-sm">Unknown tab: {tabId}</div>
+      );
+    },
+    [user.user_id],
+  );
 
-    return {
-      ...savedLayout,
-      dockbox: processBox(savedLayout.dockbox)
-    };
+  // ── Restore layout from localStorage — re-inject live React elements ───────
+  const cleanLayoutWithContent = useCallback(
+    (savedLayout: any, savedTitles: Record<string, string>) => {
+      if (!savedLayout?.dockbox) return null;
+
+      const processBox = (box: any): any => {
+        if (box.tabs) {
+          return {
+            ...box,
+            tabs: box.tabs.map((tab: any) => {
+              const tabDef = availableTabs.find((t) => t.id === tab.id);
+              const permProps = permanentTabProps[tab.id];
+              const dynamicTitle = savedTitles[tab.id];
+              return {
+                ...tab,
+                title:
+                  tabDef?.title ??
+                  permProps?.title ??
+                  dynamicTitle ??
+                  tab.title ??
+                  tab.id,
+                content: makeTabContent(tab.id),
+                ...(permProps ? { closable: permProps.closable } : {}),
+              };
+            }),
+          };
+        }
+        if (box.children) {
+          return { ...box, children: box.children.map(processBox) };
+        }
+        return box;
+      };
+
+      return { ...savedLayout, dockbox: processBox(savedLayout.dockbox) };
+    },
+    [makeTabContent],
+  );
+
+  // ── Default layout (first visit) ─────────────────────────────────────────
+  const initializeDefaultLayout = () => {
+    setDefaultLayout({
+      dockbox: {
+        mode: "horizontal" as const,
+        children: [
+          {
+            tabs: [
+              {
+                id: "header",
+                title: "navbar",
+                content: <Header />,
+                closable: false,
+              },
+            ],
+          },
+        ],
+      },
+    });
   };
 
-  // Load layout from localStorage on mount
+  // ── Restore from localStorage on mount ───────────────────────────────────
   useEffect(() => {
-    const savedLayout = localStorage.getItem('dock-layout');
-    const savedSelectedPin = localStorage.getItem('selected-pin');
-    const savedSearchQuery = localStorage.getItem('search-query');
-    const savedSelectedCategory = localStorage.getItem('selected-category');
-    const savedHiddenTabs = localStorage.getItem('hidden-tabs');
-    
-    if (savedHiddenTabs) {
-      try {
-        setHiddenTabs(new Set(JSON.parse(savedHiddenTabs)));
-      } catch (e) {
-        console.error('Failed to restore hidden tabs');
-      }
-    }
-    
-    if (savedSearchQuery) {
-      try {
-        setSearchQuery(JSON.parse(savedSearchQuery));
-      } catch (e) {
-        console.error('Failed to restore search query');
-      }
-    }
+    const savedLayout = localStorage.getItem("dock-layout");
+    const savedPin = localStorage.getItem("selected-pin");
+    const savedSearch = localStorage.getItem("search-query");
+    const savedCategory = localStorage.getItem("selected-category");
+    const savedHidden = localStorage.getItem("hidden-tabs");
+    const savedTitleRaw = localStorage.getItem("tab-titles");
 
-    if (savedSelectedCategory) {
+    let restoredTitles: Record<string, string> = {};
+    if (savedTitleRaw) {
       try {
-        setSelectedCategory(JSON.parse(savedSelectedCategory));
-      } catch (e) {
-        console.error('Failed to restore selected category');
+        restoredTitles = JSON.parse(savedTitleRaw);
+      } catch {
+        /* ignore */
       }
     }
-    
-    if (savedSelectedPin) {
+    setTabTitles(restoredTitles);
+
+    if (savedHidden) {
       try {
-        setSelectedPin(JSON.parse(savedSelectedPin));
-      } catch (e) {
-        console.error('Failed to restore selected pin');
+        setHiddenTabs(new Set(JSON.parse(savedHidden)));
+      } catch {
+        /* ignore */
+      }
+    }
+    if (savedSearch) {
+      try {
+        setSearchQuery(JSON.parse(savedSearch));
+      } catch {
+        /* ignore */
+      }
+    }
+    if (savedCategory) {
+      try {
+        setSelectedCategory(JSON.parse(savedCategory));
+      } catch {
+        /* ignore */
+      }
+    }
+    if (savedPin) {
+      try {
+        setSelectedPin(JSON.parse(savedPin));
+      } catch {
+        /* ignore */
       }
     }
 
     if (savedLayout) {
       try {
-        const parsedLayout = JSON.parse(savedLayout);
-        const cleanedLayout = cleanLayoutWithContent(parsedLayout);
-        if (cleanedLayout) {
-          setDefaultLayout(cleanedLayout);
+        const parsed = JSON.parse(savedLayout);
+        const cleaned = cleanLayoutWithContent(parsed, restoredTitles);
+        if (cleaned) {
+          setDefaultLayout(cleaned);
         } else {
           initializeDefaultLayout();
         }
-      } catch (e) {
-        console.log('No saved layout, using default');
+      } catch {
         initializeDefaultLayout();
       }
     } else {
       initializeDefaultLayout();
     }
-  }, [tabContent]);
+    // cleanLayoutWithContent is stable — depend on it only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Save layout and state to localStorage periodically
+  // ── Periodically save layout + state ─────────────────────────────────────
   useEffect(() => {
-    const saveInterval = setInterval(() => {
+    const interval = setInterval(() => {
       if (dockRef.current) {
         try {
           const layout = dockRef.current.saveLayout();
-          if (layout) {
-            localStorage.setItem('dock-layout', JSON.stringify(layout));
-          }
-        } catch (e) {
-          console.error('Failed to save layout');
+          if (layout)
+            localStorage.setItem("dock-layout", JSON.stringify(layout));
+        } catch {
+          /* ignore */
         }
       }
-      
       try {
-        localStorage.setItem('search-query', JSON.stringify(searchQuery));
-        localStorage.setItem('selected-category', JSON.stringify(selectedCategory));
-        localStorage.setItem('hidden-tabs', JSON.stringify(Array.from(hiddenTabs)));
-      } catch (e) {
-        console.error('Failed to save filters');
+        localStorage.setItem("search-query", JSON.stringify(searchQuery));
+        localStorage.setItem(
+          "selected-category",
+          JSON.stringify(selectedCategory),
+        );
+        localStorage.setItem(
+          "hidden-tabs",
+          JSON.stringify(Array.from(hiddenTabs)),
+        );
+        localStorage.setItem("tab-titles", JSON.stringify(tabTitles));
+      } catch {
+        /* ignore */
       }
-      
       if (selectedPin) {
         try {
-          localStorage.setItem('selected-pin', JSON.stringify(selectedPin));
-        } catch (e) {
-          console.error('Failed to save selected pin');
+          localStorage.setItem("selected-pin", JSON.stringify(selectedPin));
+        } catch {
+          /* ignore */
         }
       }
     }, 2000);
+    return () => clearInterval(interval);
+  }, [selectedPin, searchQuery, selectedCategory, hiddenTabs, tabTitles]);
 
-    return () => clearInterval(saveInterval);
-  }, [selectedPin, searchQuery, selectedCategory, hiddenTabs]);
-
+  // ── Toggle tab visibility ─────────────────────────────────────────────────
   const toggleTabVisibility = (tabId: string) => {
-    const newHiddenTabs = new Set(hiddenTabs);
-    if (newHiddenTabs.has(tabId)) {
-      newHiddenTabs.delete(tabId);
-    } else {
-      newHiddenTabs.add(tabId);
-    }
-    setHiddenTabs(newHiddenTabs);
-  };
-
-  const initializeDefaultLayout = () => {
-    setDefaultLayout({
-      dockbox: {
-        mode: 'horizontal' as const,
-        children: [{
-          tabs: [
-            { id: 'header', title: 'header', content: <Header />, closable: false },
-          ]
-        }]
-      }
+    setHiddenTabs((prev) => {
+      const next = new Set(prev);
+      next.has(tabId) ? next.delete(tabId) : next.add(tabId);
+      return next;
     });
   };
 
-const openTab = (tabId: string) => {
-  if (hiddenTabs.has(tabId)) {
-    return;
-  }
-  const existing = dockRef.current?.find(tabId);
-  if (existing) {
-    setTabMenuOpen(false);
-    return;
-  }
-  const tab = availableTabs.find(t => t.id === tabId);
-
-  dockRef.current?.dockMove(
-    {
-      id: tabId,
-      title: tab?.title ?? tabId,
-      content: tabContent[tabId],
-      closable: true,
-    },
-    null,
-    'float',
-  );
-  setTabMenuOpen(false);
-};
-
-  const openPinDetail = (pin: any) => {
-    setSelectedPin(pin);
-    if (hiddenTabs.has('pinDetail')) {
+  // ── Open a static tab ────────────────────────────────────────────────────
+  const openTab = (tabId: string) => {
+    if (hiddenTabs.has(tabId)) return;
+    if (dockRef.current?.find(tabId)) {
+      setTabMenuOpen(false);
       return;
     }
-    const existing = dockRef.current?.find('pinDetail');
-    if (!existing) {
-      const tab = availableTabs.find(t => t.id === 'pinDetail');
+    const tabDef = availableTabs.find((t) => t.id === tabId);
+    dockRef.current?.dockMove(
+      {
+        id: tabId,
+        title: tabDef?.title ?? tabId,
+        content: makeTabContent(tabId),
+        closable: true,
+      },
+      null,
+      "float",
+    );
+    setTabMenuOpen(false);
+  };
+
+  // ── Open chat with a specific user ───────────────────────────────────────
+  const openChat = useCallback((toUserId: number, toUsername: string) => {
+    const tabId = `chat:${toUserId}`;
+    const title = `💬 ${toUsername}`;
+    setTabTitles((prev) => ({ ...prev, [tabId]: title }));
+    if (dockRef.current?.find(tabId)) return;
+    dockRef.current?.dockMove(
+      {
+        id: tabId,
+        title,
+        content: <ChatTab toUserId={toUserId} />,
+        closable: true,
+      },
+      null,
+      "float",
+    );
+  }, []);
+
+  // ── Open another user's profile ───────────────────────────────────────────
+  const openUserProfile = useCallback((userId: number, username: string) => {
+    const tabId = `userprofile:${userId}`;
+    const title = `@${username}`;
+    setTabTitles((prev) => ({ ...prev, [tabId]: title }));
+    if (dockRef.current?.find(tabId)) return;
+    dockRef.current?.dockMove(
+      {
+        id: tabId,
+        title,
+        content: <UserProfileTab userId={userId} />,
+        closable: true,
+      },
+      null,
+      "float",
+    );
+  }, []);
+
+  // ── Open Pin Detail ───────────────────────────────────────────────────────
+  const openPinDetail = (pin: any) => {
+    setSelectedPin(pin);
+    if (hiddenTabs.has("pinDetail")) return;
+    if (!dockRef.current?.find("pinDetail")) {
+      const tabDef = availableTabs.find((t) => t.id === "pinDetail");
       dockRef.current?.dockMove(
-        { id: 'pinDetail', title: tab?.title ?? 'pin details', content: <PinDetailTab />, closable: true },
-        'main',
-        'after-tab'
+        {
+          id: "pinDetail",
+          title: tabDef?.title ?? "View Pin",
+          content: <PinDetailTab />,
+          closable: true,
+        },
+        "main",
+        "after-tab",
       );
     }
   };
 
+  // ── Ctrl+T shortcut ───────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 't') {
+      if (e.ctrlKey && e.key === "t") {
         e.preventDefault();
         setTabMenuOpen((v) => !v);
       }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
   return (
-    <AppContext.Provider value={{
-      id: 0,
-      currentTheme,
-      setTheme,
-      currentUser: user,
-      onLogout,
-      searchQuery, setSearchQuery,
-      selectedCategory, setSelectedCategory,
-      categories, filteredPins,
-      loading, error,
-      selectedPin, setSelectedPin: openPinDetail,
-      uploadOpen, setUploadOpen,
-      refetchPins: refetch,
-      tabMenuOpen, setTabMenuOpen,
-      openTab,
-    }}>
-      <div style={{ position: 'absolute', inset: 0 }}>
-
-        {/* подсказка на фоне */}
+    <AppContext.Provider
+      value={{
+        id: 0,
+        currentTheme,
+        setTheme,
+        currentUser: user,
+        onLogout,
+        openTab,
+        openChat,
+        openUserProfile,
+        searchQuery,
+        setSearchQuery,
+        selectedCategory,
+        setSelectedCategory,
+        categories,
+        filteredPins,
+        loading,
+        error,
+        selectedPin,
+        setSelectedPin: openPinDetail,
+        uploadOpen,
+        setUploadOpen,
+        refetchPins: refetch,
+        tabMenuOpen,
+        setTabMenuOpen,
+      }}
+    >
+      <div style={{ position: "absolute", inset: 0 }}>
+        {/* Background hint */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
           <p className="text-gray-300 text-sm">Ctrl+T — open tab</p>
         </div>
@@ -288,13 +402,13 @@ const openTab = (tabId: string) => {
           <DockLayout
             ref={dockRef}
             defaultLayout={defaultLayout}
-            style={{ position: 'absolute', inset: 0 }}
+            style={{ position: "absolute", inset: 0 }}
           />
         )}
 
         <UploadModal />
 
-        {/* меню выбора таба */}
+        {/* ── Manage Tabs overlay ── */}
         {tabMenuOpen && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
@@ -306,7 +420,9 @@ const openTab = (tabId: string) => {
             >
               <div className="flex items-center justify-between mb-3 px-2">
                 <span className="font-semibold text-gray-700">Manage Tabs</span>
-                <kbd className="text-xs bg-gray-100 px-2 py-1 rounded">Ctrl+T</kbd>
+                <kbd className="text-xs bg-gray-100 px-2 py-1 rounded">
+                  Ctrl+T
+                </kbd>
               </div>
               <div className="flex flex-col gap-1">
                 {availableTabs.map((tab) => (
@@ -324,7 +440,7 @@ const openTab = (tabId: string) => {
                     <button
                       onClick={() => toggleTabVisibility(tab.id)}
                       className="p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title={hiddenTabs.has(tab.id) ? 'Show tab' : 'Hide tab'}
+                      title={hiddenTabs.has(tab.id) ? "Show tab" : "Hide tab"}
                     >
                       {hiddenTabs.has(tab.id) ? (
                         <EyeOff className="w-4 h-4 text-gray-400" />

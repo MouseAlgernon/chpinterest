@@ -1,9 +1,7 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:5173');
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/../config.php';
+setCors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(200);
@@ -12,13 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start();
 
-$host = '127.0.0.1';
-$db   = '!saygex';
-$user = 'root';
-$pass = '';
-
-$data = json_decode(file_get_contents('php://input'), true);
-$username = $data['username'] ?? '';
+$data     = json_decode(file_get_contents('php://input'), true);
+$username = trim($data['username'] ?? '');
 $password = $data['password'] ?? '';
 
 if (!$username || !$password) {
@@ -28,8 +21,7 @@ if (!$username || !$password) {
 }
 
 try {
-  $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo = getDB();
 
   $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
   $stmt->execute([$username]);
@@ -41,7 +33,6 @@ try {
     exit;
   }
 
-  // создаём сессию
   $_SESSION['user_id']  = $user['user_id'];
   $_SESSION['username'] = $user['username'];
 

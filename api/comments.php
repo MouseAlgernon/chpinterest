@@ -1,22 +1,15 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/config.php';
+setCors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(200);
   exit;
 }
 
-$host = '127.0.0.1';
-$db   = '!saygex';
-$user = 'root';
-$pass = '';
-
 try {
-  $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo = getDB();
 
   $action = $_GET['action'] ?? null;
   $pin_id = $_GET['pin_id'] ?? null;
@@ -27,10 +20,10 @@ try {
     exit;
   }
 
-  // Get comments for a pin with user info
+  // Получить комментарии к пину
   if ($action === 'get-comments' && $pin_id) {
     $stmt = $pdo->prepare("
-      SELECT 
+      SELECT
         c.comment_id,
         c.pin_id,
         c.user_id,
@@ -49,58 +42,46 @@ try {
     $stmt->execute([$pin_id]);
     $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Convert likes_count to int
     foreach ($comments as &$comment) {
       $comment['likes_count'] = (int)$comment['likes_count'];
     }
 
     echo json_encode($comments);
-  }
 
-  // Add comment
-  elseif ($action === 'add-comment') {
+  // Добавить комментарий
+  } elseif ($action === 'add-comment') {
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    if (!isset($data['pin_id']) || !isset($data['user_id']) || !isset($data['content'])) {
+
+    if (!isset($data['pin_id'], $data['user_id'], $data['content'])) {
       http_response_code(400);
       echo json_encode(['error' => 'Missing required fields']);
       exit;
     }
 
-    $stmt = $pdo->prepare("
+    $pdo->prepare("
       INSERT INTO comments (pin_id, user_id, content, created_at)
       VALUES (?, ?, ?, NOW())
-    ");
-    $stmt->execute([$data['pin_id'], $data['user_id'], $data['content']]);
-    
+    ")->execute([$data['pin_id'], $data['user_id'], $data['content']]);
+
     $commentId = $pdo->lastInsertId();
 
-    // Get the created comment with user info
     $getStmt = $pdo->prepare("
-      SELECT 
-        c.comment_id,
-        c.pin_id,
-        c.user_id,
-        c.content,
-        c.created_at,
-        u.username,
-        u.profile_picture,
+      SELECT
+        c.comment_id, c.pin_id, c.user_id, c.content, c.created_at,
+        u.username, u.profile_picture,
         0 as likes_count
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.user_id
       WHERE c.comment_id = ?
     ");
     $getStmt->execute([$commentId]);
-    $comment = $getStmt->fetch(PDO::FETCH_ASSOC);
+    echo json_encode($getStmt->fetch(PDO::FETCH_ASSOC));
 
-    echo json_encode($comment);
-  }
-
-  // Like/Unlike comment
-  elseif ($action === 'toggle-comment-like') {
+  // Лайк / анлайк комментария
+  } elseif ($action === 'toggle-comment-like') {
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    if (!isset($data['comment_id']) || !isset($data['user_id'])) {
+
+    if (!isset($data['comment_id'], $data['user_id'])) {
       http_response_code(400);
       echo json_encode(['error' => 'Missing required fields']);
       exit;
@@ -111,21 +92,19 @@ try {
     $existing = $checkStmt->fetch();
 
     if ($existing) {
-      $deleteStmt = $pdo->prepare("DELETE FROM comment_likes WHERE comment_like_id = ?");
-      $deleteStmt->execute([$existing['comment_like_id']]);
+      $pdo->prepare("DELETE FROM comment_likes WHERE comment_like_id = ?")->execute([$existing['comment_like_id']]);
       echo json_encode(['liked' => false]);
     } else {
-      $insertStmt = $pdo->prepare("INSERT INTO comment_likes (comment_id, user_id, created_at) VALUES (?, ?, NOW())");
-      $insertStmt->execute([$data['comment_id'], $data['user_id']]);
+      $pdo->prepare("INSERT INTO comment_likes (comment_id, user_id, created_at) VALUES (?, ?, NOW())")
+          ->execute([$data['comment_id'], $data['user_id']]);
       echo json_encode(['liked' => true]);
     }
-  }
 
-  // Get comment likes count and user's like status
-  elseif ($action === 'get-comment-likes') {
+  // Кол-во лайков + статус
+  } elseif ($action === 'get-comment-likes') {
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    if (!isset($data['comment_id']) || !isset($data['user_id'])) {
+
+    if (!isset($data['comment_id'], $data['user_id'])) {
       http_response_code(400);
       echo json_encode(['error' => 'Missing required fields']);
       exit;
@@ -141,7 +120,7 @@ try {
 
     echo json_encode([
       'count' => (int)$countResult['count'],
-      'liked' => !empty($userLike)
+      'liked' => !empty($userLike),
     ]);
   }
 

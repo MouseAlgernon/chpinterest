@@ -1,6 +1,12 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/config.php';
+setCors();
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(200);
+  exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   http_response_code(405);
@@ -8,37 +14,44 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   exit;
 }
 
-$host = '127.0.0.1';
-$db   = '!saygex';
-$user = 'root';
-$pass = '';
-
 try {
-  $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo = getDB();
 
-$title       = $_POST['title'] ?? '';
-$description = $_POST['description'] ?? '';
-$board_id    = $_POST['board_id'] ?? 1;
-$user_id     = $_POST['user_id'] ?? 1;
-$link_url    = $_POST['link_url'] ?? null;
-$category    = $_POST['category'] ?? 'Other'; 
+  $title       = trim($_POST['title'] ?? '');
+  $description = trim($_POST['description'] ?? '');
+  $board_id    = (int)($_POST['board_id'] ?? 1);
+  $user_id     = (int)($_POST['user_id'] ?? 1);
+  $link_url    = ($_POST['link_url'] ?? '') ?: null;
+  $category    = $_POST['category'] ?? 'Other';
 
-  // вставляем пин
+  if (!$title) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Title is required']);
+    exit;
+  }
+
+  // Создаём пин один раз
   $stmt = $pdo->prepare("
-    INSERT INTO pins (board_id, user_id, title, description, image_url, link_url, created_at)
-    VALUES (?, ?, ?, ?, '', ?, NOW())
+    INSERT INTO pins (board_id, user_id, title, description, image_url, link_url, category, created_at)
+    VALUES (?, ?, ?, ?, '', ?, ?, NOW())
   ");
-  $stmt->execute([$board_id, $user_id, $title, $description, $link_url]);
+  $stmt->execute([$board_id, $user_id, $title, $description, $link_url, $category]);
   $pin_id = $pdo->lastInsertId();
 
   $first_image = '';
-  $uploadDir = __DIR__ . '/../assets/uploads/';
-  if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+  $uploadDir   = __DIR__ . '/../assets/uploads/';
+  if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
+  }
 
-  // сохраняем файлы
+  // Сохраняем файлы и пишем в таблицу images
   if (!empty($_FILES['media']['name'][0])) {
-    $files = $_FILES['media'];
+    $files   = $_FILES['media'];
+    $imgStmt = $pdo->prepare("
+      INSERT INTO images (pin_id, image_path, image_type, sort_order)
+      VALUES (?, ?, 'upload', ?)
+    ");
+
     foreach ($files['name'] as $i => $name) {
       if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
 
@@ -48,18 +61,15 @@ $category    = $_POST['category'] ?? 'Other';
       $webPath  = '/assets/uploads/' . $filename;
 
       move_uploaded_file($files['tmp_name'][$i], $path);
+      $imgStmt->execute([$pin_id, $webPath, $i]);
 
-      $stmt = $pdo->prepare("
-  INSERT INTO pins (board_id, user_id, title, description, image_url, link_url, category, created_at)
-  VALUES (?, ?, ?, ?, '', ?, ?, NOW())
-");
-$stmt->execute([$board_id, $user_id, $title, $description, $link_url, $category]);
-
-      if ($i === 0) $first_image = $webPath;
+      if ($i === 0) {
+        $first_image = $webPath;
+      }
     }
   }
 
-  // обновляем image_url первым фото
+  // Обновляем превью пина первым изображением
   if ($first_image) {
     $pdo->prepare("UPDATE pins SET image_url = ? WHERE pin_id = ?")
         ->execute([$first_image, $pin_id]);
