@@ -6,6 +6,8 @@ setCors();
 try {
   $pdo = getDB();
 
+  // Return the main gallery feed with author and like data.
+
   $stmt = $pdo->query("
     SELECT
       p.*,
@@ -26,6 +28,7 @@ try {
     ORDER BY sort_order ASC
   ");
 
+  // Attach ordered media rows to each pin.
   foreach ($pins as &$pin) {
     $imgStmt->execute([$pin['pin_id']]);
     $pin['images']      = $imgStmt->fetchAll(PDO::FETCH_ASSOC);

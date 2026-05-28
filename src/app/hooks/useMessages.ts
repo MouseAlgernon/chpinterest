@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface Message {
   message_id: number;
@@ -19,30 +19,35 @@ export interface Conversation {
   sender_id: number;
 }
 
-const API_BASE = '/api';
+// Chat polling is simple here and keeps both tabs fresh.
+const API_BASE = "/api";
 
 export function useConversations(userId: number) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Load one latest row per conversation partner.
   const fetchConversations = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
         `${API_BASE}/messages.php?action=conversations&user_id=${userId}`,
-        { credentials: 'include' },
+        { credentials: "include" },
       );
       const data = await response.json();
       const list: Conversation[] = Array.isArray(data) ? data : [];
-      setConversations(list.map(c => ({ ...c, partner_id: Number(c.partner_id) })));
+      setConversations(
+        list.map((c) => ({ ...c, partner_id: Number(c.partner_id) })),
+      );
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error("Failed to fetch conversations:", error);
     } finally {
       setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
+    // Poll slowly here because the list changes less often than chat.
     fetchConversations();
     const interval = setInterval(fetchConversations, 5000);
     return () => clearInterval(interval);
@@ -56,17 +61,18 @@ export function useChat(userId: number, otherUserId: number) {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Poll the active thread so new messages appear without reload.
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
         `${API_BASE}/messages.php?action=messages&user_id=${userId}&other_id=${otherUserId}`,
-        { credentials: 'include' },
+        { credentials: "include" },
       );
       const data = await response.json();
       setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
+      console.error("Failed to fetch messages:", error);
     } finally {
       setLoading(false);
     }
@@ -79,23 +85,32 @@ export function useChat(userId: number, otherUserId: number) {
   }, [fetchMessages]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll after each fetch or send so the newest row stays visible.
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/messages.php`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: userId, receiver_id: otherUserId, content }),
-      });
-      const newMessage: Message = await response.json();
-      setMessages(prev => [...prev, newMessage]);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  }, [userId, otherUserId]);
+  // Append the created row returned by the API.
+  const sendMessage = useCallback(
+    async (content: string) => {
+      try {
+        const response = await fetch(`${API_BASE}/messages.php`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender_id: userId,
+            receiver_id: otherUserId,
+            content,
+          }),
+        });
+        const newMessage: Message = await response.json();
+        setMessages((prev) => [...prev, newMessage]);
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      }
+    },
+    [userId, otherUserId],
+  );
 
   return { messages, loading, sendMessage, bottomRef, refetch: fetchMessages };
 }

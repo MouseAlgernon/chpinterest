@@ -25,7 +25,7 @@ $defaults = [
 try {
     $pdo = getDB();
 
-    // ── GET ?user_id=X — return all 4 settings as a flat object ──────────────
+    // Return all settings merged with defaults.
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $userId = $_GET['user_id'] ?? null;
 
@@ -50,7 +50,7 @@ try {
         exit;
     }
 
-    // ── POST — upsert a single setting ───────────────────────────────────────
+    // Update or insert one setting row.
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body = json_decode(file_get_contents('php://input'), true);
 
@@ -79,7 +79,7 @@ try {
             exit;
         }
 
-        // Try UPDATE first; if no row existed, INSERT
+        // Update first, then insert only when the row is missing.
         $stmtUpdate = $pdo->prepare(
             "UPDATE usersettings SET setting_value = ? WHERE user_id = ? AND setting_name = ?"
         );

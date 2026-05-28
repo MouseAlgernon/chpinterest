@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Pin } from "../../AppContext";
 
+// Fetch the public pin feed for the gallery.
 export function usePins() {
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,10 @@ export function usePins() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchPins(); }, [fetchPins]);
+  // Load once and reuse the same fetch callback for manual refresh.
+  useEffect(() => {
+    fetchPins();
+  }, [fetchPins]);
 
   return { pins, loading, error, refetch: fetchPins };
 }

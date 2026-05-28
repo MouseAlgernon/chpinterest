@@ -20,7 +20,7 @@ try {
     exit;
   }
 
-  // Получить комментарии к пину
+  // Return comments for one pin, newest first.
   if ($action === 'get-comments' && $pin_id) {
     $stmt = $pdo->prepare("
       SELECT
@@ -48,7 +48,7 @@ try {
 
     echo json_encode($comments);
 
-  // Добавить комментарий
+  // Insert one comment and return the created row.
   } elseif ($action === 'add-comment') {
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -77,7 +77,7 @@ try {
     $getStmt->execute([$commentId]);
     echo json_encode($getStmt->fetch(PDO::FETCH_ASSOC));
 
-  // Лайк / анлайк комментария
+  // Toggle a like row for one comment.
   } elseif ($action === 'toggle-comment-like') {
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -100,7 +100,7 @@ try {
       echo json_encode(['liked' => true]);
     }
 
-  // Кол-во лайков + статус
+  // Return the comment like count and user state.
   } elseif ($action === 'get-comment-likes') {
     $data = json_decode(file_get_contents('php://input'), true);
 

@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 try {
   $pdo = getDB();
 
-  // ── GET ──────────────────────────────────────────────────────────────────
+  // Read friend lists or one relation status.
   if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $user_id    = $_GET['user_id']    ?? null;
     $check_with = $_GET['check_with'] ?? null;
@@ -22,7 +22,7 @@ try {
       exit;
     }
 
-    // ?user_id=X&check_with=Y — bilateral status check
+    // Return the relation between two users.
     if ($check_with !== null) {
       $stmt = $pdo->prepare("
         SELECT status, user_id
@@ -45,10 +45,10 @@ try {
       exit;
     }
 
-    // ?user_id=X — full friends / incoming / sent lists
+    // Return accepted, incoming, and sent lists for one user.
     $fields = "u.user_id, u.username, u.profile_picture, f.created_at";
 
-    // Accepted friends (X is the initiator side stored in user_id)
+    // Accepted friends from rows where this user is the owner side.
     $stmtFriends = $pdo->prepare("
       SELECT $fields
       FROM friends f
@@ -59,7 +59,7 @@ try {
     $stmtFriends->execute([$user_id]);
     $friends = $stmtFriends->fetchAll(PDO::FETCH_ASSOC);
 
-    // Incoming pending requests (someone sent to X)
+    // Incoming pending requests from other users.
     $stmtIncoming = $pdo->prepare("
       SELECT $fields
       FROM friends f
@@ -70,7 +70,7 @@ try {
     $stmtIncoming->execute([$user_id]);
     $incoming = $stmtIncoming->fetchAll(PDO::FETCH_ASSOC);
 
-    // Sent pending requests (X sent to someone)
+    // Outgoing pending requests sent by this user.
     $stmtSent = $pdo->prepare("
       SELECT $fields
       FROM friends f
@@ -89,7 +89,7 @@ try {
     exit;
   }
 
-  // ── POST ─────────────────────────────────────────────────────────────────
+  // Apply one friend action.
   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data      = json_decode(file_get_contents('php://input'), true);
     $action    = $data['action']    ?? null;
@@ -104,7 +104,7 @@ try {
 
     switch ($action) {
 
-      // Send a friend request
+      // Create a new pending request if no row exists yet.
       case 'send':
         $check = $pdo->prepare("
           SELECT friend_id FROM friends
@@ -124,16 +124,16 @@ try {
         echo json_encode(['success' => true]);
         break;
 
-      // Accept an incoming request (friend_id → user_id)
+      // Accept the incoming request and create the reverse row.
       case 'accept':
-        // Update the original row from sender (friend_id) to receiver (user_id)
+        // Mark the original sender row as accepted.
         $pdo->prepare("
           UPDATE friends
           SET status = 'accepted'
           WHERE user_id = ? AND friend_user_id = ? AND status = 'pending'
         ")->execute([$friend_id, $user_id]);
 
-        // Insert (or update) the reverse row so both sides are accepted
+        // Ensure the reverse direction exists too.
         $pdo->prepare("
           INSERT INTO friends (user_id, friend_user_id, status)
           VALUES (?, ?, 'accepted')
@@ -143,7 +143,7 @@ try {
         echo json_encode(['success' => true]);
         break;
 
-      // Reject an incoming request (friend_id → user_id)
+      // Reject by deleting the pending sender row.
       case 'reject':
         $pdo->prepare("
           DELETE FROM friends
@@ -152,7 +152,7 @@ try {
         echo json_encode(['success' => true]);
         break;
 
-      // Cancel a request that user_id sent to friend_id
+      // Cancel an outgoing pending request.
       case 'cancel':
         $pdo->prepare("
           DELETE FROM friends
@@ -161,7 +161,7 @@ try {
         echo json_encode(['success' => true]);
         break;
 
-      // Remove friendship in both directions
+      // Remove both accepted rows at once.
       case 'remove':
         $pdo->prepare("
           DELETE FROM friends

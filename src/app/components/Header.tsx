@@ -18,7 +18,7 @@ export default function Header() {
     currentUser,
   } = useAppContext();
 
-  // ── People search (@ prefix) ─────────────────────────────────────────────
+  // Switch search mode when the query starts with @.
   const [userResults, setUserResults] = useState<FriendUser[]>([]);
   const [userSearching, setUserSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -52,7 +52,7 @@ export default function Header() {
     return () => clearTimeout(timer);
   }, [searchQuery, isPeopleSearch, peopleQuery, currentUser?.user_id]);
 
-  // Close dropdown on outside click
+  // Close the user list when the click is outside.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -75,7 +75,7 @@ export default function Header() {
   return (
     <>
       <div className="flex items-center gap-4 px-4 py-3">
-        {/* Logo */}
+        {/* Brand block. */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="bg-gray-600 text-white rounded-full p-2">
             <img src={logo} alt="logo" className="w-8 h-8 rounded-full" />
@@ -83,7 +83,7 @@ export default function Header() {
           <span className="font-semibold text-xl">Chpinterest</span>
         </div>
 
-        {/* Search */}
+        {/* Main search with optional people mode. */}
         <div className="flex-1 max-w-3xl relative" ref={dropdownRef}>
           <div className="relative">
             {isPeopleSearch ? (
@@ -112,7 +112,7 @@ export default function Header() {
             )}
           </div>
 
-          {/* User search dropdown */}
+          {/* User results are shown only in people mode. */}
           {showDropdown && isPeopleSearch && (
             <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
               {userSearching ? (
@@ -153,7 +153,7 @@ export default function Header() {
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Quick actions for tabs and account. */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => setTabMenuOpen(true)}
@@ -182,7 +182,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Category pills — hidden during people search */}
+      {/* Hide categories while people search is active. */}
       {!isPeopleSearch && (
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
           {categories.map((category) => (

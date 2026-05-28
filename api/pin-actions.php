@@ -21,7 +21,7 @@ try {
     exit;
   }
 
-  // Like / Unlike
+  // Toggle a like row for this user and pin.
   if ($action === 'toggle-like') {
     $checkStmt = $pdo->prepare("SELECT like_id FROM likes WHERE pin_id = ? AND user_id = ?");
     $checkStmt->execute([$pin_id, $user_id]);
@@ -36,7 +36,7 @@ try {
       echo json_encode(['liked' => true]);
     }
 
-  // Save / Unsave
+  // Toggle a saved pin row for this user and pin.
   } elseif ($action === 'toggle-save') {
     $checkStmt = $pdo->prepare("SELECT save_id FROM savedpins WHERE pin_id = ? AND user_id = ?");
     $checkStmt->execute([$pin_id, $user_id]);
@@ -51,7 +51,7 @@ try {
       echo json_encode(['saved' => true]);
     }
 
-  // Кол-во лайков + статус пользователя
+  // Return the like count and the current user state.
   } elseif ($action === 'get-likes') {
     $countStmt = $pdo->prepare("SELECT COUNT(*) as count FROM likes WHERE pin_id = ?");
     $countStmt->execute([$pin_id]);
@@ -66,7 +66,7 @@ try {
       'liked' => !empty($userLike),
     ]);
 
-  // Статус сохранения
+  // Return only the save state for this user.
   } elseif ($action === 'get-save-status') {
     $stmt = $pdo->prepare("SELECT save_id FROM savedpins WHERE pin_id = ? AND user_id = ?");
     $stmt->execute([$pin_id, $user_id]);

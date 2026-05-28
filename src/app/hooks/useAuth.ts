@@ -10,7 +10,7 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check session on load
+  // Ask the server if a session already exists.
   useEffect(() => {
     fetch("/api/auth/me.php", { credentials: "include" })
       .then((res) => res.json())
@@ -62,7 +62,8 @@ export function useAuth() {
     const res = await fetch("/api/auth/register.php", {
       method: "POST",
       credentials: "include",
-      body: formData, // no Content-Type header — browser sets multipart boundary
+      // Let the browser build the multipart boundary.
+      body: formData,
     });
     const data = await res.json();
     if (data.success) {

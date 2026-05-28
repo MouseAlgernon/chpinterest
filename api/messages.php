@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 try {
   $pdo = getDB();
 
-  // ── GET ──────────────────────────────────────────────────────────────────
+  // Read conversation list or one message thread.
   if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action  = $_GET['action']   ?? null;
     $user_id = $_GET['user_id']  ?? null;
@@ -22,7 +22,7 @@ try {
       exit;
     }
 
-    // List conversations — latest message per partner
+    // Build one latest row per partner.
     if ($action === 'conversations') {
       $stmt = $pdo->prepare("
         SELECT
@@ -45,7 +45,7 @@ try {
       $stmt->execute([$user_id, $user_id, $user_id, $user_id]);
       $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-      // Deduplicate: keep first (latest) row per partner
+      // Rows are already sorted, so keep the first partner hit.
       $seen          = [];
       $conversations = [];
       foreach ($rows as $row) {
@@ -66,7 +66,7 @@ try {
       exit;
     }
 
-    // All messages between two users
+    // Return the full thread between two users.
     if ($action === 'messages') {
       $other_id = $_GET['other_id'] ?? null;
       if (!$other_id) {
@@ -108,7 +108,7 @@ try {
     exit;
   }
 
-  // ── POST — send a message ─────────────────────────────────────────────────
+  // Insert a message and return the created row.
   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data        = json_decode(file_get_contents('php://input'), true);
     $sender_id   = $data['sender_id']   ?? null;

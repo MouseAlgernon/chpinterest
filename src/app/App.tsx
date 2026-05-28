@@ -5,7 +5,7 @@ import { AppContext } from "../AppContext";
 import Header from "./components/Header";
 import GalleryTab from "./components/GalleryTab";
 import PinDetailTab from "./components/PinDetailTab";
-import UploadModal from "./components/UploadModal";
+import CreatePinTab from "./components/CreatePinTab";
 import FriendsTab from "./components/FriendsTab";
 import ChatsTab from "./components/ChatsTab";
 import ChatTab from "./components/ChatTab";
@@ -15,9 +15,10 @@ import { usePins } from "./hooks/usePins";
 import { themes, Theme } from "./themes";
 import { Eye, EyeOff } from "lucide-react";
 
-// ── Static tabs shown in the Manage Tabs menu ──────────────────────────────
+// Tabs shown in the tab picker.
 const availableTabs = [
   { id: "main", title: "Gallery", label: "Gallery" },
+  { id: "createPin", title: "Create Pin", label: "Create Pin" },
   { id: "pinDetail", title: "View Pin", label: "View Pin" },
   { id: "chats", title: "Messages", label: "Messages" },
   { id: "friends", title: "Friends", label: "Friends" },
@@ -25,7 +26,7 @@ const availableTabs = [
   { id: "settings", title: "Settings", label: "Settings" },
 ];
 
-// ── Props for tabs not in availableTabs (restored after reload) ────────────
+// Static props for tabs restored from local storage.
 const permanentTabProps: Record<string, { title: string; closable: boolean }> =
   {
     header: { title: "navbar", closable: false },
@@ -53,7 +54,7 @@ export default function App({ user, onLogout }: AppProps) {
   const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [defaultLayout, setDefaultLayout] = useState<any>(null);
   const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(new Set());
-  // Titles for dynamic tabs (chat:N, userprofile:N) — persisted so they survive reload
+  // Save dynamic titles so restored tabs keep readable names.
   const [tabTitles, setTabTitles] = useState<Record<string, string>>({});
 
   const dockRef = useRef<DockLayout>(null);
@@ -78,11 +79,12 @@ export default function App({ user, onLogout }: AppProps) {
     return matchesSearch && matchesCategory;
   });
 
-  // ── Build a React element for any tab ID, including dynamic ones ───────────
+  // Build content for static and dynamic tabs.
   const makeTabContent = useCallback(
     (tabId: string): React.ReactElement => {
       if (tabId === "header") return <Header />;
       if (tabId === "main") return <GalleryTab />;
+      if (tabId === "createPin") return <CreatePinTab />;
       if (tabId === "pinDetail") return <PinDetailTab />;
       if (tabId === "chats") return <ChatsTab />;
       if (tabId === "friends") return <FriendsTab />;
@@ -104,7 +106,7 @@ export default function App({ user, onLogout }: AppProps) {
     [user.user_id],
   );
 
-  // ── Restore layout from localStorage — re-inject live React elements ───────
+  // Rebuild saved layout and inject live React nodes.
   const cleanLayoutWithContent = useCallback(
     (savedLayout: any, savedTitles: Record<string, string>) => {
       if (!savedLayout?.dockbox) return null;
@@ -142,7 +144,7 @@ export default function App({ user, onLogout }: AppProps) {
     [makeTabContent],
   );
 
-  // ── Default layout (first visit) ─────────────────────────────────────────
+  // Use a minimal layout on first load.
   const initializeDefaultLayout = () => {
     setDefaultLayout({
       dockbox: {
@@ -163,7 +165,7 @@ export default function App({ user, onLogout }: AppProps) {
     });
   };
 
-  // ── Restore from localStorage on mount ───────────────────────────────────
+  // Restore layout and UI state on mount.
   useEffect(() => {
     const savedLayout = localStorage.getItem("dock-layout");
     const savedPin = localStorage.getItem("selected-pin");
@@ -226,11 +228,11 @@ export default function App({ user, onLogout }: AppProps) {
     } else {
       initializeDefaultLayout();
     }
-    // cleanLayoutWithContent is stable — depend on it only once
+    // This callback is stable here, so one mount pass is enough.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Periodically save layout + state ─────────────────────────────────────
+  // Save layout and small UI state in the background.
   useEffect(() => {
     const interval = setInterval(() => {
       if (dockRef.current) {
@@ -267,7 +269,7 @@ export default function App({ user, onLogout }: AppProps) {
     return () => clearInterval(interval);
   }, [selectedPin, searchQuery, selectedCategory, hiddenTabs, tabTitles]);
 
-  // ── Toggle tab visibility ─────────────────────────────────────────────────
+  // Hide or show a tab in the picker.
   const toggleTabVisibility = (tabId: string) => {
     setHiddenTabs((prev) => {
       const next = new Set(prev);
@@ -276,7 +278,7 @@ export default function App({ user, onLogout }: AppProps) {
     });
   };
 
-  // ── Open a static tab ────────────────────────────────────────────────────
+  // Open a static tab as a floating panel.
   const openTab = (tabId: string) => {
     if (hiddenTabs.has(tabId)) return;
     if (dockRef.current?.find(tabId)) {
@@ -297,7 +299,7 @@ export default function App({ user, onLogout }: AppProps) {
     setTabMenuOpen(false);
   };
 
-  // ── Open chat with a specific user ───────────────────────────────────────
+  // Open one chat tab per target user.
   const openChat = useCallback((toUserId: number, toUsername: string) => {
     const tabId = `chat:${toUserId}`;
     const title = `💬 ${toUsername}`;
@@ -315,7 +317,7 @@ export default function App({ user, onLogout }: AppProps) {
     );
   }, []);
 
-  // ── Open another user's profile ───────────────────────────────────────────
+  // Open one profile tab per target user.
   const openUserProfile = useCallback((userId: number, username: string) => {
     const tabId = `userprofile:${userId}`;
     const title = `@${username}`;
@@ -333,7 +335,7 @@ export default function App({ user, onLogout }: AppProps) {
     );
   }, []);
 
-  // ── Open Pin Detail ───────────────────────────────────────────────────────
+  // Open the pin detail tab next to the gallery.
   const openPinDetail = (pin: any) => {
     setSelectedPin(pin);
     if (hiddenTabs.has("pinDetail")) return;
@@ -352,7 +354,7 @@ export default function App({ user, onLogout }: AppProps) {
     }
   };
 
-  // ── Ctrl+T shortcut ───────────────────────────────────────────────────────
+  // Ctrl+T toggles the tab picker.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "t") {
@@ -393,7 +395,7 @@ export default function App({ user, onLogout }: AppProps) {
       }}
     >
       <div style={{ position: "absolute", inset: 0 }}>
-        {/* Background hint */}
+        {/* Soft hint shown behind floating panels. */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
           <p className="text-gray-300 text-sm">Ctrl+T — open tab</p>
         </div>
@@ -406,9 +408,7 @@ export default function App({ user, onLogout }: AppProps) {
           />
         )}
 
-        <UploadModal />
-
-        {/* ── Manage Tabs overlay ── */}
+        {/* Tab picker overlay. */}
         {tabMenuOpen && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"

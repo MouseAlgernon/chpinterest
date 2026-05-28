@@ -18,7 +18,7 @@ try {
     exit;
   }
 
-  // ── Search users ──────────────────────────────────────────────────────────
+  // Search users by username for mentions and friend lookup.
   if ($action === 'search') {
     $q          = $_GET['q']          ?? '';
     $exclude_id = $_GET['exclude_id'] ?? null;
@@ -46,7 +46,7 @@ try {
     exit;
   }
 
-  // ── User profile ──────────────────────────────────────────────────────────
+  // Build one profile payload with stats and pins.
   if ($action === 'profile') {
     $user_id = $_GET['user_id'] ?? null;
 
@@ -56,7 +56,7 @@ try {
       exit;
     }
 
-    // Basic user row
+    // Load the basic user fields first.
     $stmtUser = $pdo->prepare("
       SELECT user_id, username, profile_picture
       FROM users
@@ -71,7 +71,7 @@ try {
       exit;
     }
 
-    // Fetch privacy settings
+    // Merge stored settings with defaults.
     $settStmt = $pdo->prepare(
         "SELECT setting_name, setting_value FROM usersettings WHERE user_id = ?"
     );
@@ -90,7 +90,7 @@ try {
     }
     $user['settings'] = $settings;
 
-    // Stats — three separate COUNT queries for clarity
+    // Keep stats separate for simple SQL and clear types.
     $stmtPinsCount = $pdo->prepare("SELECT COUNT(*) FROM pins WHERE user_id = ?");
     $stmtPinsCount->execute([$user_id]);
     $user['pins_count'] = (int)$stmtPinsCount->fetchColumn();
@@ -107,7 +107,7 @@ try {
     $stmtFollowersCount->execute([$user_id]);
     $user['followers_count'] = (int)$stmtFollowersCount->fetchColumn();
 
-    // Pins with like counts
+    // Load pins first, then attach media in one extra query.
     $stmtPins = $pdo->prepare("
       SELECT p.*, COUNT(DISTINCT l.like_id) AS likes_count
       FROM pins p
@@ -120,7 +120,7 @@ try {
     $pins = $stmtPins->fetchAll(PDO::FETCH_ASSOC);
 
     if (!empty($pins)) {
-      // Collect all pin IDs for a single images query
+      // Build one IN query for all pin ids.
       $pinIds      = array_column($pins, 'pin_id');
       $placeholders = implode(',', array_fill(0, count($pinIds), '?'));
 
@@ -133,7 +133,7 @@ try {
       $stmtImages->execute($pinIds);
       $allImages = $stmtImages->fetchAll(PDO::FETCH_ASSOC);
 
-      // Group images by pin_id
+      // Group media rows before attaching them back to pins.
       $imagesByPin = [];
       foreach ($allImages as $img) {
         $imagesByPin[(int)$img['pin_id']][] = $img;

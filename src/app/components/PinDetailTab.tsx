@@ -23,8 +23,9 @@ export default function PinDetailTab() {
     useAppContext();
   const [scale, setScale] = useState(100);
   const [commentText, setCommentText] = useState("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Author section state
+  // Keep author relation state next to the detail view.
   const [friendStatus, setFriendStatus] = useState<FriendStatus>("none");
   const [isSender, setIsSender] = useState(false);
   const [targetSettings, setTargetSettings] = useState<UserSettings | null>(
@@ -46,7 +47,7 @@ export default function PinDetailTab() {
     toggleCommentLike,
   } = useComments(selectedPin?.pin_id ?? 0);
 
-  // Fetch pin actions + comments when pin changes
+  // Reload pin state and comments when the viewed pin changes.
   useEffect(() => {
     if (selectedPin) {
       fetchState();
@@ -54,7 +55,11 @@ export default function PinDetailTab() {
     }
   }, [selectedPin, fetchState, fetchComments]);
 
-  // Fetch author's friend status + privacy settings when pin changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [selectedPin?.pin_id]);
+
+  // Load author access rules for message and friend buttons.
   useEffect(() => {
     if (
       !selectedPin ||
@@ -89,6 +94,17 @@ export default function PinDetailTab() {
 
   const pin = selectedPin;
   const isOwnPin = currentUser && pin.user_id === currentUser.user_id;
+
+  const imageSources =
+    pin.images && pin.images.length > 0
+      ? [...pin.images]
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((image) => image.image_path)
+      : [pin.image_url];
+
+  const safeImageIndex = Math.min(currentImageIndex, imageSources.length - 1);
+  const currentImage = imageSources[safeImageIndex];
+  const hasMultipleImages = imageSources.length > 1;
 
   const avatar =
     (pin as any).author_picture ||
@@ -142,7 +158,7 @@ export default function PinDetailTab() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Zoom slider */}
+      {/* Scale only changes the current image preview size. */}
       <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100">
         <span className="text-sm text-gray-400">25%</span>
         <input
@@ -163,7 +179,7 @@ export default function PinDetailTab() {
         </button>
       </div>
 
-      {/* Author */}
+      {/* Author row also exposes social actions. */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
         <button
           onClick={() => openUserProfile(pin.user_id, pin.username ?? "")}
@@ -178,7 +194,7 @@ export default function PinDetailTab() {
 
         {!isOwnPin && (
           <div className="flex gap-2">
-            {/* Message button */}
+            {/* Allow chat only when the target settings permit it. */}
             {canMessage && (
               <button
                 onClick={() => openChat(pin.user_id, pin.username ?? "")}
@@ -189,7 +205,7 @@ export default function PinDetailTab() {
               </button>
             )}
 
-            {/* Add Friend */}
+            {/* Show request action only in the idle state. */}
             {canAddFriend && (
               <button
                 onClick={() => handleFriendAction("send")}
@@ -201,7 +217,7 @@ export default function PinDetailTab() {
               </button>
             )}
 
-            {/* Request sent — can cancel */}
+            {/* Sender can cancel an outgoing pending request. */}
             {!isOwnPin && friendStatus === "pending" && isSender && (
               <button
                 onClick={() => handleFriendAction("cancel")}
@@ -213,7 +229,7 @@ export default function PinDetailTab() {
               </button>
             )}
 
-            {/* Incoming request — can accept */}
+            {/* Receiver can accept an incoming pending request. */}
             {!isOwnPin && friendStatus === "pending" && !isSender && (
               <button
                 onClick={() => handleFriendAction("accept")}
@@ -225,7 +241,7 @@ export default function PinDetailTab() {
               </button>
             )}
 
-            {/* Already friends — can remove */}
+            {/* Friends can be removed from the same place. */}
             {!isOwnPin && friendStatus === "accepted" && (
               <button
                 onClick={() => handleFriendAction("remove")}
@@ -242,20 +258,60 @@ export default function PinDetailTab() {
         )}
       </div>
 
-      {/* Main content */}
+      {/* Main pin content and media viewer. */}
       <div className="flex-1 overflow-auto p-6">
         <img
-          src={pin.image_url}
-          alt={pin.title}
+          src={currentImage}
+          alt={`${pin.title} ${hasMultipleImages ? `(${safeImageIndex + 1}/${imageSources.length})` : ""}`.trim()}
           style={{ width: `${scale}%`, height: "auto" }}
           className="rounded-2xl"
         />
+
+        {hasMultipleImages && (
+          <div className="mt-4 max-w-xl">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <button
+                onClick={() =>
+                  setCurrentImageIndex((prev) => Math.max(0, prev - 1))
+                }
+                disabled={safeImageIndex === 0}
+                className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <span className="text-sm text-gray-500">
+                Slide {safeImageIndex + 1} of {imageSources.length}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentImageIndex((prev) =>
+                    Math.min(imageSources.length - 1, prev + 1),
+                  )
+                }
+                disabled={safeImageIndex === imageSources.length - 1}
+                className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+
+            <input
+              type="range"
+              min={0}
+              max={imageSources.length - 1}
+              step={1}
+              value={safeImageIndex}
+              onChange={(e) => setCurrentImageIndex(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+        )}
 
         <h2 className="text-2xl font-bold mt-4">{pin.title}</h2>
         <p className="text-gray-500 mt-1">{pin.category}</p>
         <p className="text-gray-700 mt-3 leading-relaxed">{pin.description}</p>
 
-        {/* Actions */}
+        {/* Pin actions use server state from the hooks. */}
         <div className="flex gap-3 mt-6">
           <button
             onClick={toggleLike}
@@ -273,7 +329,10 @@ export default function PinDetailTab() {
           </button>
           <button
             onClick={() =>
-              downloadImage(pin.image_url, `${pin.title || "pin"}.jpg`)
+              downloadImage(
+                currentImage,
+                `${pin.title || "pin"}-${safeImageIndex + 1}.jpg`,
+              )
             }
             className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all bg-blue-100 text-blue-600 hover:bg-blue-200"
           >
@@ -282,13 +341,13 @@ export default function PinDetailTab() {
           </button>
         </div>
 
-        {/* Comments section */}
+        {/* Comments are loaded separately to keep pin data lighter. */}
         <div className="mt-8 border-t border-gray-200 pt-6">
           <h3 className="text-lg font-bold mb-4">
             Comments ({comments.length})
           </h3>
 
-          {/* Add comment */}
+          {/* Logged in users can post a new comment here. */}
           {currentUser && (
             <div className="flex gap-3 mb-6">
               <img
@@ -319,7 +378,7 @@ export default function PinDetailTab() {
             </div>
           )}
 
-          {/* Comments list */}
+          {/* Keep newest comments first for quick feedback. */}
           <div className="space-y-4">
             {commentsLoading ? (
               <p className="text-gray-400 text-sm">Loading comments...</p>

@@ -1,11 +1,11 @@
 <?php
 /**
- * Общий конфиг: параметры БД + вспомогательные функции.
- * Credentials берутся из .env в корне проекта.
- * Подключай в каждом API-файле через require_once.
+ * Shared API config.
+ * Load DB values from the root .env file.
+ * Include this file in each endpoint.
  */
 
-// Читаем .env из корня проекта (на два уровня выше api/)
+// Read .env from the project root.
 $envFile = __DIR__ . '/../.env';
 if (is_file($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
@@ -21,7 +21,7 @@ define('DB_USER', $_ENV['DB_USER'] ?? 'root');
 define('DB_PASS', $_ENV['DB_PASS'] ?? '');
 
 /**
- * Возвращает PDO-соединение.
+ * Create one PDO connection.
  */
 function getDB(): PDO {
     $pdo = new PDO(
@@ -34,8 +34,7 @@ function getDB(): PDO {
 }
 
 /**
- * Выставляет CORS-заголовки.
- * Разрешает любой localhost (с любым портом) + 127.0.0.1.
+ * Set CORS headers for local dev origins.
  */
 function setCors(): void {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

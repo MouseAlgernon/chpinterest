@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/config.php';
 setCors();
+session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(200);
@@ -15,12 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+  if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Not authorized']);
+    exit;
+  }
+
   $pdo = getDB();
 
   $title       = trim($_POST['title'] ?? '');
   $description = trim($_POST['description'] ?? '');
   $board_id    = (int)($_POST['board_id'] ?? 1);
-  $user_id     = (int)($_POST['user_id'] ?? 1);
+  $user_id     = (int)$_SESSION['user_id'];
   $link_url    = ($_POST['link_url'] ?? '') ?: null;
   $category    = $_POST['category'] ?? 'Other';
 
@@ -30,7 +37,7 @@ try {
     exit;
   }
 
-  // Создаём пин один раз
+  // Create the pin first, then attach uploaded images.
   $stmt = $pdo->prepare("
     INSERT INTO pins (board_id, user_id, title, description, image_url, link_url, category, created_at)
     VALUES (?, ?, ?, ?, '', ?, ?, NOW())
@@ -44,7 +51,7 @@ try {
     mkdir($uploadDir, 0755, true);
   }
 
-  // Сохраняем файлы и пишем в таблицу images
+  // Store each file and keep its display order.
   if (!empty($_FILES['media']['name'][0])) {
     $files   = $_FILES['media'];
     $imgStmt = $pdo->prepare("
@@ -69,7 +76,7 @@ try {
     }
   }
 
-  // Обновляем превью пина первым изображением
+  // Mirror the first image into pins.image_url for fast previews.
   if ($first_image) {
     $pdo->prepare("UPDATE pins SET image_url = ? WHERE pin_id = ?")
         ->execute([$first_image, $pin_id]);
