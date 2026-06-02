@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
 
   // На WAMP:  PHP_SERVER=http://localhost/chpinterest
   // На Linux: PHP_SERVER=http://localhost:8000   (php -S localhost:8000 -t .)
-  const phpServer = env.PHP_SERVER || "http://localhost:8000";
+  const phpServer = "c:\\wamp64\\bin\\php\\php8.2.0\\php.exe - S 127.0.0.1:8000";
 
   return {
     plugins: [figmaAssetResolver(), react(), tailwindcss()],
